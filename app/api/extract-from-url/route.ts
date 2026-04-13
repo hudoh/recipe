@@ -59,6 +59,10 @@ async function scrapeUrl(url: string): Promise<string> {
         body: JSON.stringify({ url, formats: ['markdown'] }),
       });
 
+      if (firecrawlResponse.status === 402 || firecrawlResponse.status === 403) {
+        throw new Error('FIRECRAWL_UNAVAILABLE');
+      }
+
       if (firecrawlResponse.ok) {
         const firecrawlData = await firecrawlResponse.json() as {
           data?: { markdown?: string };
@@ -133,6 +137,12 @@ export async function POST(request: Request) {
       if (message === 'BLOCKED') {
         return NextResponse.json(
           { error: "This site blocks automated access. Try copying the recipe text manually instead." },
+          { status: 422 }
+        );
+      }
+      if (message === 'FIRECRAWL_UNAVAILABLE') {
+        return NextResponse.json(
+          { error: "AI extraction requires a Firecrawl API key (free at firecrawl.dev) or credits. Add FIRECRAWL_API_KEY to Vercel env vars, or enter the recipe manually." },
           { status: 422 }
         );
       }
