@@ -5,19 +5,25 @@
    ============================================ */
 
 @media print {
-  /* Hide everything by default */
-  * {
+  /* Hide non-recipe elements explicitly */
+  .no-print,
+  [data-no-print],
+  nav,
+  header > *:not(.print-recipe),
+  button,
+  .print-button-row,
+  footer {
     display: none !important;
   }
 
-  /* Un-hide the recipe content area and its children */
-  .print-recipe,
-  .print-recipe * {
-    display: revert !important;
+  /* Recipe content fills the page */
+  .print-recipe {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    left: auto !important;
+    top: auto !important;
   }
-
-  /* Re-enable block/inline as appropriate for key elements */
-  .print-recipe      { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
   .print-recipe h1   { display: block !important; }
   .print-recipe p    { display: block !important; }
   .print-recipe ul   { display: block !important; }
