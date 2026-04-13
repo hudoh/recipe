@@ -104,8 +104,8 @@ async function scrapeUrl(url: string): Promise<string> {
     },
   });
 
-  // Check if the site blocked us
-  if (response.status === 403 || response.status === 406 || response.status === 429) {
+  // Check if the site blocked us (including 402 Payment Required from bot detection)
+  if (response.status === 403 || response.status === 406 || response.status === 429 || response.status === 402) {
     // Try Apify as primary cloud scraper (reliable headless browser)
     const apifyHtml = await tryApify(url);
     if (apifyHtml) {
@@ -124,21 +124,22 @@ async function scrapeUrl(url: string): Promise<string> {
         body: JSON.stringify({ url, formats: ['markdown'] }),
       });
 
-      if (firecrawlResponse.status === 402 || firecrawlResponse.status === 403) {
-        throw new Error('FIRECRAWL_UNAVAILABLE');
+      if (!firecrawlResponse.ok) {
+        if (firecrawlResponse.status === 402 || firecrawlResponse.status === 403) {
+          throw new Error('FIRECRAWL_UNAVAILABLE');
+        }
+        throw new Error(`Firecrawl error: ${firecrawlResponse.status} ${firecrawlResponse.statusText}`);
       }
 
-      if (firecrawlResponse.ok) {
-        const firecrawlData = await firecrawlResponse.json() as {
-          data?: { markdown?: string };
-          error?: string;
-        };
-        if (firecrawlData.data?.markdown) {
-          return `<html><body><p>${firecrawlData.data.markdown}</p></body></html>`;
-        }
-        if (firecrawlData.error) {
-          throw new Error(`Firecrawl error: ${firecrawlData.error}`);
-        }
+      const firecrawlData = await firecrawlResponse.json() as {
+        data?: { markdown?: string };
+        error?: string;
+      };
+      if (firecrawlData.data?.markdown) {
+        return `<html><body><p>${firecrawlData.data.markdown}</p></body></html>`;
+      }
+      if (firecrawlData.error) {
+        throw new Error(`Firecrawl error: ${firecrawlData.error}`);
       }
     }
 
