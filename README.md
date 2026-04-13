@@ -52,6 +52,10 @@ CREATE TABLE recipes (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Rating & category migration (run in Supabase SQL Editor if adding to existing table):
+-- ALTER TABLE recipes ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating >= 1 AND rating <= 5);
+-- ALTER TABLE recipes ADD COLUMN IF NOT EXISTS category TEXT DEFAULT '';
+
 ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Public read" ON recipes FOR SELECT USING (true);

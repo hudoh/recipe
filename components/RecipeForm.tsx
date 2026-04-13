@@ -23,6 +23,7 @@ export default function RecipeForm({ initialData, isEdit = false }: RecipeFormPr
   const [cookTime, setCookTime] = useState(initialData?.cook_time ?? '');
   const [notes, setNotes] = useState(initialData?.notes ?? '');
   const [tagsInput, setTagsInput] = useState(initialData?.tags?.join(', ') ?? '');
+  const [category, setCategory] = useState(initialData?.category ?? '');
   const [ingredients, setIngredients] = useState<Ingredient[]>(
     initialData?.ingredients?.length ? initialData.ingredients : [emptyIngredient()]
   );
@@ -62,6 +63,7 @@ export default function RecipeForm({ initialData, isEdit = false }: RecipeFormPr
       instructions: filteredInstructions,
       tags,
       notes,
+      category,
     };
 
     try {
@@ -146,6 +148,16 @@ export default function RecipeForm({ initialData, isEdit = false }: RecipeFormPr
               onChange={e => setTagsInput(e.target.value)}
               className="input-field"
               placeholder="dessert, easy, vegan"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-espresso mb-1">Category</label>
+            <input
+              type="text"
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              className="input-field"
+              placeholder="Breakfast, Dessert, Weeknight Dinner..."
             />
           </div>
         </div>

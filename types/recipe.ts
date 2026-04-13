@@ -21,6 +21,8 @@ export type Recipe = {
   notes: string;
   created_at: string;
   updated_at: string;
+  rating?: number;      // 1-5 stars, null/undefined if unrated
+  category?: string;     // free-text category (e.g. "Breakfast", "Dessert")
 };
 
 export type RecipeFormData = Omit<Recipe, 'id' | 'created_at' | 'updated_at'>;

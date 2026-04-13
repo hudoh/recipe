@@ -67,6 +67,31 @@ export default function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
             <span>{recipe.servings} servings</span>
           </div>
 
+          {/* Stars + Category row */}
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            {/* Star rating */}
+            {recipe.rating ? (
+              <div className="flex items-center gap-0.5" aria-label={`${recipe.rating} out of 5 stars`}>
+                {[1, 2, 3, 4, 5].map(star => (
+                  <span
+                    key={star}
+                    className={`text-sm ${star <= recipe.rating! ? 'text-caramel' : 'text-espresso/20'}`}
+                  >
+                    {star <= recipe.rating! ? '★' : '☆'}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="text-xs text-espresso/30">No rating</span>
+            )}
+            {/* Category badge */}
+            {recipe.category && (
+              <span className="px-2 py-0.5 bg-sage/20 text-espresso rounded-full text-xs font-medium">
+                {recipe.category}
+              </span>
+            )}
+          </div>
+
           {recipe.tags && recipe.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3">
               {recipe.tags.map((tag) => (

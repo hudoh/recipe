@@ -10,6 +10,8 @@ export default function Home() {
   const [filtered, setFiltered] = useState<Recipe[]>([]);
   const [search, setSearch] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [ratingFilter, setRatingFilter] = useState<number | null>(null); // minimum rating
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   const fetchRecipes = useCallback(async () => {
@@ -44,8 +46,21 @@ export default function Home() {
         selectedTags.every(tag => r.tags?.includes(tag))
       );
     }
+    if (ratingFilter !== null) {
+      result = result.filter(r => (r.rating ?? 0) >= ratingFilter);
+    }
+    if (categoryFilter.trim()) {
+      const q = categoryFilter.toLowerCase();
+      result = result.filter(r =>
+        r.category?.toLowerCase().includes(q)
+      );
+    }
     setFiltered(result);
   }, [recipes, search, selectedTags]);
+
+  const allCategories = Array.from(
+    new Set(recipes.flatMap(r => r.category?.trim() ? [r.category] : []))
+  ).sort();
 
   const allTags = Array.from(
     new Set(recipes.flatMap(r => r.tags ?? []))
@@ -73,9 +88,9 @@ export default function Home() {
 
       <main className="max-w-5xl mx-auto px-6 py-8">
         {/* Toolbar */}
-        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between mb-6">
           {/* Search */}
-          <div className="relative w-full sm:w-80">
+          <div className="relative w-full sm:w-64">
             <input
               type="text"
               placeholder="Search recipes..."
@@ -87,6 +102,40 @@ export default function Home() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </div>
+
+          {/* Rating filter */}
+          <select
+            value={ratingFilter ?? ''}
+            onChange={e => setRatingFilter(e.target.value ? Number(e.target.value) : null)}
+            className="px-3 py-2.5 rounded-xl border border-espresso/20 bg-white text-espresso text-sm focus:outline-none focus:ring-2 focus:ring-caramel"
+          >
+            <option value="">All Ratings</option>
+            <option value="5">★★★★★ only</option>
+            <option value="4">★★★★+</option>
+            <option value="3">★★★+</option>
+          </select>
+
+          {/* Category filter */}
+          {allCategories.length > 0 ? (
+            <select
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+              className="px-3 py-2.5 rounded-xl border border-espresso/20 bg-white text-espresso text-sm focus:outline-none focus:ring-2 focus:ring-caramel"
+            >
+              <option value="">All Categories</option>
+              {allCategories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              placeholder="Filter by category..."
+              value={categoryFilter}
+              onChange={e => setCategoryFilter(e.target.value)}
+              className="px-3 py-2.5 rounded-xl border border-espresso/20 bg-white text-espresso text-sm focus:outline-none focus:ring-2 focus:ring-caramel w-44"
+            />
+          )}
 
           <Link href="/recipe/new" className="btn-caramel flex items-center gap-2 flex-shrink-0">
             <span className="text-lg">+</span> New Recipe
@@ -109,9 +158,9 @@ export default function Home() {
                 {tag}
               </button>
             ))}
-            {selectedTags.length > 0 && (
+            {(selectedTags.length > 0 || ratingFilter !== null || categoryFilter) && (
               <button
-                onClick={() => setSelectedTags([])}
+                onClick={() => { setSelectedTags([]); setRatingFilter(null); setCategoryFilter(''); }}
                 className="px-3 py-1 text-sm text-espresso/50 hover:text-espresso underline"
               >
                 Clear filters

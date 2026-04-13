@@ -14,6 +14,8 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   const [currentServings, setCurrentServings] = useState(1);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const [userRating, setUserRating] = useState<number | null>(null);
+  const [ratingUpdating, setRatingUpdating] = useState(false);
 
   const fetchRecipe = useCallback(async () => {
     try {
@@ -22,6 +24,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
       const data: Recipe = await res.json();
       setRecipe(data);
       setCurrentServings(data.servings);
+      setUserRating(data.rating ?? null);
     } catch {
       setRecipe(null);
     } finally {
@@ -77,10 +80,50 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold mb-2">{recipe.name}</h1>
+              {/* Category badge */}
+              {recipe.category && (
+                <span className="inline-block px-2.5 py-0.5 bg-sage/30 text-cream/90 rounded-full text-xs font-medium mb-2">
+                  {recipe.category}
+                </span>
+              )}
               <div className="print-meta flex flex-wrap gap-3 text-sm text-cream/70">
                 {recipe.prep_time && <span>Prep: {recipe.prep_time}</span>}
                 {recipe.cook_time && <span>Cook: {recipe.cook_time}</span>}
                 <span>Serves {currentServings}</span>
+              </div>
+              {/* Interactive star rating */}
+              <div className="flex items-center gap-1 mt-3 no-print" aria-label="Rate this recipe">
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button
+                    key={star}
+                    onClick={async () => {
+                      if (ratingUpdating) return;
+                      setRatingUpdating(true);
+                      const newRating = star === userRating ? null : star;
+                      setUserRating(newRating);
+                      await fetch(`/api/recipes/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ rating: newRating }),
+                      });
+                      setRatingUpdating(false);
+                    }}
+                    className={`text-2xl transition-colors ${
+                      star <= (userRating ?? 0)
+                        ? 'text-caramel'
+                        : 'text-cream/30 hover:text-cream/60'
+                    }`}
+                    title={star === userRating ? 'Remove rating' : `Rate ${star} star${star > 1 ? 's' : ''}`}
+                  >
+                    {star <= (userRating ?? 0) ? '★' : '☆'}
+                  </button>
+                ))}
+                {userRating && (
+                  <span className="text-cream/50 text-sm ml-1">{userRating}/5</span>
+                )}
+                {!userRating && (
+                  <span className="text-cream/40 text-sm ml-1">Rate this recipe</span>
+                )}
               </div>
               {recipe.tags && recipe.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
