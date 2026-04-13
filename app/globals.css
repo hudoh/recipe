@@ -1,5 +1,212 @@
 @import "tailwindcss";
 
+/* ============================================
+   PRINT STYLES — Clean recipe card output
+   ============================================ */
+
+@media print {
+  /* Hide everything by default */
+  * {
+    visibility: hidden;
+  }
+
+  /* Only show the recipe content area */
+  .print-recipe,
+  .print-recipe * {
+    visibility: visible;
+  }
+
+  /* Position the recipe content at the top of the page */
+  .print-recipe {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* Hide chrome: nav, buttons, header background */
+  .no-print,
+  header .no-print,
+  header a[href="/"],
+  header a[href^="/recipe/"],
+  header button,
+  .serving-scaler-section,
+  .action-buttons {
+    display: none !important;
+  }
+
+  /* Page setup */
+  @page {
+    margin: 0.75in;
+    size: letter;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    font-family: Georgia, 'Times New Roman', serif !important;
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Recipe header */
+  .print-recipe h1 {
+    font-size: 22pt !important;
+    font-weight: bold !important;
+    color: #2C1810 !important;
+    margin-bottom: 6pt !important;
+    page-break-after: avoid !important;
+  }
+
+  .print-meta {
+    font-size: 10pt !important;
+    color: #444 !important;
+    display: flex !important;
+    gap: 16pt !important;
+    margin-bottom: 8pt !important;
+  }
+
+  .print-tags {
+    display: flex !important;
+    gap: 6pt !important;
+    flex-wrap: wrap !important;
+    margin-bottom: 8pt !important;
+  }
+
+  .print-tag {
+    font-size: 8pt !important;
+    background: #eee !important;
+    color: #333 !important;
+    border-radius: 3pt !important;
+    padding: 1pt 6pt !important;
+  }
+
+  .print-notes {
+    font-size: 9pt !important;
+    color: #555 !important;
+    font-style: italic !important;
+    margin-bottom: 10pt !important;
+    border-top: 0.5pt solid #ccc !important;
+    padding-top: 6pt !important;
+  }
+
+  /* Two-column layout for print */
+  .print-body {
+    display: grid !important;
+    grid-template-columns: 1fr 1.5fr !important;
+    gap: 20pt !important;
+  }
+
+  .print-section h2 {
+    font-size: 12pt !important;
+    font-weight: bold !important;
+    color: #2C1810 !important;
+    border-bottom: 1pt solid #D4956A !important;
+    padding-bottom: 3pt !important;
+    margin-bottom: 8pt !important;
+    page-break-after: avoid !important;
+  }
+
+  /* Ingredients */
+  .print-ingredients {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .print-ingredient-item {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 6pt !important;
+    padding: 3pt 0 !important;
+    border-bottom: 0.25pt solid #eee !important;
+    font-size: 10pt !important;
+    page-break-inside: avoid !important;
+  }
+
+  .print-ingredient-dot {
+    width: 4pt !important;
+    height: 4pt !important;
+    border-radius: 50% !important;
+    background: #D4956A !important;
+    flex-shrink: 0 !important;
+    margin-top: 5pt !important;
+  }
+
+  .print-ingredient-content {
+    font-size: 10pt !important;
+  }
+
+  .print-ingredient-amount {
+    font-weight: bold !important;
+  }
+
+  .print-ingredient-unit {
+    margin-right: 4pt !important;
+  }
+
+  .print-ingredient-item-name {
+    color: #111 !important;
+  }
+
+  .print-ingredient-notes {
+    font-size: 8pt !important;
+    color: #666 !important;
+    font-style: italic !important;
+    display: block !important;
+  }
+
+  /* Instructions */
+  .print-instructions {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    counter-reset: none !important;
+  }
+
+  .print-instruction-item {
+    display: flex !important;
+    gap: 10pt !important;
+    margin-bottom: 8pt !important;
+    page-break-inside: avoid !important;
+    align-items: flex-start !important;
+  }
+
+  .print-instruction-number {
+    width: 18pt !important;
+    height: 18pt !important;
+    border-radius: 50% !important;
+    background: #D4956A !important;
+    color: #2C1810 !important;
+    font-size: 9pt !important;
+    font-weight: bold !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+  }
+
+  .print-instruction-step {
+    font-size: 10pt !important;
+    line-height: 1.5 !important;
+    color: #111 !important;
+    padding-top: 1pt !important;
+  }
+
+  /* Source URL at bottom */
+  .print-source {
+    font-size: 8pt !important;
+    color: #888 !important;
+    margin-top: 16pt !important;
+    padding-top: 8pt !important;
+    border-top: 0.5pt solid #ddd !important;
+  }
+
+  .print-source a {
+    color: #888 !important;
+  }
+}
+
 @theme {
   --color-cream: #FDF6EC;
   --color-espresso: #2C1810;
