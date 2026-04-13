@@ -245,6 +245,7 @@ export default function NewRecipePage() {
                 ref={fileInputRef}
                 type="file"
                 accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.docx"
+                capture="environment"
                 onChange={handleFileChange}
                 className="hidden"
               />
