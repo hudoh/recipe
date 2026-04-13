@@ -30,12 +30,53 @@ Rules:
 - tags should be an array of strings`;
 
 async function scrapeUrl(url: string): Promise<string> {
+  // First try with realistic browser headers
   const response = await fetch(url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; RecipeBot/1.0; +mailto:admin@example.com)',
-      'Accept': 'text/html,application/xhtml+xml',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.5',
+      'Accept-Encoding': 'gzip, deflate, br',
+      'Connection': 'keep-alive',
+      'Upgrade-Insecure-Requests': '1',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'none',
     },
   });
+
+  // Check if the site blocked us
+  if (response.status === 403 || response.status === 406 || response.status === 429) {
+    // Try Firecrawl as fallback
+    const firecrawlKey = process.env.FIRECRAWL_API_KEY;
+    if (firecrawlKey) {
+      const firecrawlResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${firecrawlKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url, formats: ['markdown'] }),
+      });
+
+      if (firecrawlResponse.ok) {
+        const firecrawlData = await firecrawlResponse.json() as {
+          data?: { markdown?: string };
+          error?: string;
+        };
+        if (firecrawlData.data?.markdown) {
+          return `<html><body><p>${firecrawlData.data.markdown}</p></body></html>`;
+        }
+        if (firecrawlData.error) {
+          throw new Error(`Firecrawl error: ${firecrawlData.error}`);
+        }
+      }
+      // If Firecrawl also failed, fall through to user-friendly error below
+    }
+
+    // If we get here, both direct fetch and Firecrawl failed
+    throw new Error('BLOCKED');
+  }
 
   if (!response.ok) {
     throw new Error(`Failed to fetch URL: ${response.status} ${response.statusText}`);
@@ -89,6 +130,12 @@ export async function POST(request: Request) {
       html = await scrapeUrl(url);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to fetch URL';
+      if (message === 'BLOCKED') {
+        return NextResponse.json(
+          { error: "This site blocks automated access. Try copying the recipe text manually instead." },
+          { status: 422 }
+        );
+      }
       return NextResponse.json({ error: message }, { status: 422 });
     }
 
