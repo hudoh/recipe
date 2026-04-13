@@ -8,16 +8,16 @@ import type { Recipe } from '@/types/recipe';
 interface RecipeCardProps {
   recipe: Recipe;
   onDelete?: (id: string) => void;
+  onFavoriteToggle?: (id: string, currentFavorite: boolean) => void;
 }
 
-export default function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
+export default function RecipeCard({ recipe, onDelete, onFavoriteToggle }: RecipeCardProps) {
   const router = useRouter();
 
   const handlePrint = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     router.push(`/recipe/${recipe.id}`);
-    // Small delay to let the page render, then print
     setTimeout(() => { window.print(); }, 100);
   };
 
@@ -26,8 +26,22 @@ export default function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
       <Link href={`/recipe/${recipe.id}`} className="block">
         <div className="p-6">
           <div className="flex justify-between items-start mb-3">
-            <h3 className="text-xl font-bold text-espresso leading-tight">{recipe.name}</h3>
-            <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+            <h3 className="text-xl font-bold text-espresso leading-tight flex-1 mr-2">{recipe.name}</h3>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Favorite heart */}
+              {onFavoriteToggle && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onFavoriteToggle(recipe.id, !!recipe.is_favorite);
+                  }}
+                  className="text-lg transition-colors hover:scale-110 p-1"
+                  title={recipe.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+                >
+                  {recipe.is_favorite ? '❤️' : '♡'}
+                </button>
+              )}
               {/* Print button */}
               <button
                 onClick={handlePrint}
@@ -67,7 +81,7 @@ export default function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
             <span>{recipe.servings} servings</span>
           </div>
 
-          {/* Stars + Category row */}
+          {/* Stars + Category + Make Again row */}
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             {/* Star rating */}
             {recipe.rating ? (
@@ -83,6 +97,12 @@ export default function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
               </div>
             ) : (
               <span className="text-xs text-espresso/30">No rating</span>
+            )}
+            {/* Make Again badge */}
+            {(recipe.make_again_count ?? 0) > 0 && (
+              <span className="px-2 py-0.5 bg-sage/20 text-espresso rounded-full text-xs font-medium">
+                Made {recipe.make_again_count}x
+              </span>
             )}
             {/* Category badge */}
             {recipe.category && (

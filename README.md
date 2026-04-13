@@ -56,6 +56,11 @@ CREATE TABLE recipes (
 -- ALTER TABLE recipes ADD COLUMN IF NOT EXISTS rating INTEGER CHECK (rating >= 1 AND rating <= 5);
 -- ALTER TABLE recipes ADD COLUMN IF NOT EXISTS category TEXT DEFAULT '';
 
+-- Favorites, Make Again counter, and Nutrition migration:
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS is_favorite BOOLEAN DEFAULT false;
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS make_again_count INTEGER DEFAULT 0;
+ALTER TABLE recipes ADD COLUMN IF NOT EXISTS nutrition JSONB;
+
 ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Public read" ON recipes FOR SELECT USING (true);
@@ -86,7 +91,11 @@ VALUES (
 cp .env.local.example .env.local
 ```
 
-Edit `.env.local` with your Supabase project URL and anon key (found in Supabase Dashboard → Project Settings → API).
+Edit `.env.local` with your Supabase project URL and anon key (found in Supabase Dashboard → Project Settings → API), plus an OpenAI API key for nutrition estimation:
+
+```bash
+OPENAI_API_KEY=sk-...
+```
 
 ### 5. Run locally
 

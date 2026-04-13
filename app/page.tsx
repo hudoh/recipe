@@ -10,8 +10,9 @@ export default function Home() {
   const [filtered, setFiltered] = useState<Recipe[]>([]);
   const [search, setSearch] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [ratingFilter, setRatingFilter] = useState<number | null>(null); // minimum rating
+  const [ratingFilter, setRatingFilter] = useState<number | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchRecipes = useCallback(async () => {
@@ -55,8 +56,11 @@ export default function Home() {
         r.category?.toLowerCase().includes(q)
       );
     }
+    if (showFavoritesOnly) {
+      result = result.filter(r => r.is_favorite);
+    }
     setFiltered(result);
-  }, [recipes, search, selectedTags]);
+  }, [recipes, search, selectedTags, ratingFilter, categoryFilter, showFavoritesOnly]);
 
   const allCategories = Array.from(
     new Set(recipes.flatMap(r => r.category?.trim() ? [r.category] : []))
@@ -73,6 +77,15 @@ export default function Home() {
 
   const handleDelete = async (id: string) => {
     await fetch(`/api/recipes/${id}`, { method: 'DELETE' });
+    fetchRecipes();
+  };
+
+  const handleFavoriteToggle = async (id: string, currentFavorite: boolean) => {
+    await fetch(`/api/recipes/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_favorite: !currentFavorite }),
+    });
     fetchRecipes();
   };
 
@@ -137,9 +150,24 @@ export default function Home() {
             />
           )}
 
-          <Link href="/recipe/new" className="btn-caramel flex items-center gap-2 flex-shrink-0">
-            <span className="text-lg">+</span> New Recipe
-          </Link>
+          <div className="flex gap-2 flex-shrink-0">
+            {/* Favorites toggle */}
+            <button
+              onClick={() => setShowFavoritesOnly(prev => !prev)}
+              className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${
+                showFavoritesOnly
+                  ? 'bg-caramel border-caramel text-espresso'
+                  : 'border-espresso/20 text-espresso hover:border-caramel bg-white'
+              }`}
+            >
+              <span className="text-base">{showFavoritesOnly ? '❤️' : '♡'}</span>
+              Favorites
+            </button>
+
+            <Link href="/recipe/new" className="btn-caramel flex items-center gap-2">
+              <span className="text-lg">+</span> New Recipe
+            </Link>
+          </div>
         </div>
 
         {/* Tag filters */}
@@ -158,9 +186,9 @@ export default function Home() {
                 {tag}
               </button>
             ))}
-            {(selectedTags.length > 0 || ratingFilter !== null || categoryFilter) && (
+            {(selectedTags.length > 0 || ratingFilter !== null || categoryFilter || showFavoritesOnly) && (
               <button
-                onClick={() => { setSelectedTags([]); setRatingFilter(null); setCategoryFilter(''); }}
+                onClick={() => { setSelectedTags([]); setRatingFilter(null); setCategoryFilter(''); setShowFavoritesOnly(false); }}
                 className="px-3 py-1 text-sm text-espresso/50 hover:text-espresso underline"
               >
                 Clear filters
@@ -186,7 +214,12 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {filtered.map(recipe => (
-              <RecipeCard key={recipe.id} recipe={recipe} onDelete={handleDelete} />
+              <RecipeCard
+                key={recipe.id}
+                recipe={recipe}
+                onDelete={handleDelete}
+                onFavoriteToggle={handleFavoriteToggle}
+              />
             ))}
           </div>
         )}

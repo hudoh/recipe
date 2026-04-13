@@ -15,6 +15,7 @@ const emptyInstruction = (): Instruction => ({ step: '' });
 export default function RecipeForm({ initialData, isEdit = false }: RecipeFormProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [savingMessage, setSavingMessage] = useState('');
   const [error, setError] = useState('');
 
   const [name, setName] = useState(initialData?.name ?? '');
@@ -77,10 +78,12 @@ export default function RecipeForm({ initialData, isEdit = false }: RecipeFormPr
       });
 
       if (!res.ok) throw new Error(await res.text());
+      setSavingMessage(isEdit ? 'Done!' : 'Saving & estimating nutrition…');
       router.push('/');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save recipe');
+      setSavingMessage('');
     } finally {
       setSaving(false);
     }
@@ -264,14 +267,17 @@ export default function RecipeForm({ initialData, isEdit = false }: RecipeFormPr
         </button>
       </section>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 items-center">
         <button
           type="submit"
           disabled={saving}
           className="btn-caramel disabled:opacity-50"
         >
-          {saving ? 'Saving...' : isEdit ? 'Update Recipe' : 'Save Recipe'}
+          {saving ? 'Saving…' : isEdit ? 'Update Recipe' : 'Save Recipe'}
         </button>
+        {savingMessage && (
+          <span className="text-sm text-espresso/60">{savingMessage}</span>
+        )}
         <button
           type="button"
           onClick={() => router.back()}
