@@ -1,13 +1,33 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-:root {
-  --foreground-rgb: 44, 24, 16;
-  --background-rgb: 255, 248, 240;
+@theme {
+  --color-cream: #FDF6EC;
+  --color-espresso: #2C1810;
+  --color-caramel: #D4956A;
+  --color-sage: #7D8C6B;
+  --font-serif: Georgia, serif;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-rgb));
+  background-color: #FDF6EC;
+  color: #2C1810;
+  font-family: Georgia, serif;
+}
+
+@layer components {
+  .btn-caramel {
+    @apply px-4 py-2 bg-caramel text-espresso font-semibold rounded-lg hover:bg-caramel/90 transition-colors;
+  }
+  .btn-sage {
+    @apply px-4 py-2 bg-sage text-white font-semibold rounded-lg hover:bg-sage/90 transition-colors;
+  }
+  .btn-espresso {
+    @apply px-4 py-2 bg-espresso text-cream font-semibold rounded-lg hover:bg-espresso/80 transition-colors;
+  }
+  .input-field {
+    @apply w-full p-3 border border-espresso/20 rounded-lg bg-cream text-espresso focus:outline-none focus:ring-2 focus:ring-caramel;
+  }
+  .card {
+    @apply bg-cream rounded-xl shadow-md overflow-hidden border border-espresso/10;
+  }
 }

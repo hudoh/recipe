@@ -9,10 +9,13 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        cream: '#FFF8F0',
+        cream: '#FDF6EC',
         espresso: '#2C1810',
-        caramel: '#D4A87A',
-        sage: '#7A9E7E',
+        caramel: '#D4956A',
+        sage: '#7D8C6B',
+      },
+      fontFamily: {
+        serif: ['Georgia', 'serif'],
       },
     },
   },

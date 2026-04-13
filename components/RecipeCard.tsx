@@ -1,77 +1,66 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
-
-type Tag = string;
-
-export type Recipe = {
-  id: string;
-  name: string;
-  description: string;
-  tags: Tag[];
-  base_servings: number;
-  image_url?: string;
-};
+import type { Recipe } from '@/types/recipe';
 
 interface RecipeCardProps {
   recipe: Recipe;
+  onDelete?: (id: string) => void;
 }
 
-const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
+export default function RecipeCard({ recipe, onDelete }: RecipeCardProps) {
   return (
-    <Link href={`/recipe/${recipe.id}`} className="block">
-      <div className="bg-cream rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 border border-espresso/10">
-        {/* Recipe Image */}
-        {recipe.image_url ? (
-          <img 
-            src={recipe.image_url} 
-            alt={recipe.name}
-            className="w-full h-48 object-cover"
-          />
-        ) : (
-          <div className="bg-espresso/10 w-full h-48 flex items-center justify-center">
-            <span className="text-espresso/30 text-lg">No Image</span>
-          </div>
-        )}
-        
-        {/* Recipe Content */}
+    <div className="card hover:shadow-lg transition-shadow duration-200">
+      <Link href={`/recipe/${recipe.id}`} className="block">
         <div className="p-6">
-          <h3 className="text-xl font-bold text-espresso mb-2">{recipe.name}</h3>
-          <p className="text-espresso/80 text-sm mb-4 line-clamp-2">{recipe.description}</p>
-          
-          {/* Tags */}
-          <div className="flex flex-wrap gap-2 mb-4">
-            {recipe.tags.map(tag => (
-              <span 
-                key={tag} 
-                className="px-3 py-1 bg-caramel text-espresso rounded-full text-xs font-medium"
+          <div className="flex justify-between items-start mb-3">
+            <h3 className="text-xl font-bold text-espresso leading-tight">{recipe.name}</h3>
+            {onDelete && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (confirm(`Delete "${recipe.name}"?`)) onDelete(recipe.id);
+                }}
+                className="text-espresso/30 hover:text-red-500 transition-colors ml-2 flex-shrink-0"
+                title="Delete recipe"
               >
-                {tag}
-              </span>
-            ))}
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
           </div>
-          
-          {/* Base Servings */}
-          <div className="flex items-center text-espresso/70 text-sm">
-            <svg 
-              className="w-4 h-4 mr-1" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24" 
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-              />
-            </svg>
-            <span>{recipe.base_servings} servings</span>
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-};
 
-export default RecipeCard;
+          <div className="flex gap-4 text-sm text-espresso/60 mb-3">
+            {recipe.prep_time && (
+              <span>Prep: {recipe.prep_time}</span>
+            )}
+            {recipe.cook_time && (
+              <span>Cook: {recipe.cook_time}</span>
+            )}
+            <span>{recipe.servings} servings</span>
+          </div>
+
+          {recipe.tags && recipe.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {recipe.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="px-2.5 py-0.5 bg-caramel/20 text-espresso rounded-full text-xs font-medium"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {recipe.notes && (
+            <p className="text-sm text-espresso/60 italic line-clamp-2">{recipe.notes}</p>
+          )}
+        </div>
+      </Link>
+    </div>
+  );
+}
