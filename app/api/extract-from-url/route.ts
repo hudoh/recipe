@@ -29,8 +29,50 @@ Rules:
 - instructions should be an array of {step} objects
 - tags should be an array of strings`;
 
+async function tryApify(url: string): Promise<string | null> {
+  const apifyKey = process.env.APIFY_API_KEY;
+  if (!apifyKey) return null;
+
+  try {
+    // Use Apify's sync endpoint - waits for results and returns dataset items
+    const response = await fetch(
+      `https://api.apify.com/v2/acts/apify~website-scraper/run-sync-get-dataset-items?token=${apifyKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ startUrl: url }),
+        signal: AbortSignal.timeout(30000),
+      }
+    );
+
+    if (!response.ok) {
+      console.log(`Apify returned ${response.status}`);
+      return null;
+    }
+
+    const items = await response.json() as Array<{
+      text?: string;
+      html?: string;
+      url?: string;
+    }>;
+
+    if (items && items.length > 0) {
+      // Prefer text content, fall back to html
+      const pageContent = items[0]?.text || items[0]?.html || '';
+      if (pageContent && pageContent.length > 100) {
+        console.log('Apify scraped successfully');
+        return `<html><body>${pageContent}</body></html>`;
+      }
+    }
+  } catch (e) {
+    console.log('Apify failed:', e instanceof Error ? e.message : e);
+  }
+
+  return null;
+}
+
 async function scrapeUrl(url: string): Promise<string> {
-  // Try local browser scraper first (MacBook Air)
+  // Try local browser scraper first (MacBook Air via ngrok)
   const scraperBase = process.env.SCRAPER_BASE_URL;
   if (scraperBase) {
     try {
@@ -64,7 +106,13 @@ async function scrapeUrl(url: string): Promise<string> {
 
   // Check if the site blocked us
   if (response.status === 403 || response.status === 406 || response.status === 429) {
-    // Try Firecrawl as fallback
+    // Try Apify as primary cloud scraper (reliable headless browser)
+    const apifyHtml = await tryApify(url);
+    if (apifyHtml) {
+      return apifyHtml;
+    }
+
+    // Try Firecrawl as secondary fallback
     const firecrawlKey = process.env.FIRECRAWL_API_KEY;
     if (firecrawlKey) {
       const firecrawlResponse = await fetch('https://api.firecrawl.dev/v0/scrape', {
@@ -92,10 +140,9 @@ async function scrapeUrl(url: string): Promise<string> {
           throw new Error(`Firecrawl error: ${firecrawlData.error}`);
         }
       }
-      // If Firecrawl also failed, fall through to user-friendly error below
     }
 
-    // If we get here, both direct fetch and Firecrawl failed
+    // If we get here, all cloud scrapers failed
     throw new Error('BLOCKED');
   }
 
