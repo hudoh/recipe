@@ -1,6 +1,33 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) throw new Error('Missing Supabase env vars');
+  return { url, key };
+}
+
+async function uploadToStorage(file: File, buffer: Buffer): Promise<string | null> {
+  const { url: supabaseUrl, key } = getSupabaseAdmin();
+  const fileName = `${Date.now()}-${file.name}`;
+  // Use service role key if available, otherwise anon key
+  const res = await fetch(`${supabaseUrl}/storage/v1/object/recipe-files/${fileName}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${key}`,
+      'Content-Type': file.type,
+      'x-upsert': 'true',
+    },
+    body: new Uint8Array(buffer),
+  });
+  if (!res.ok) {
+    console.error('Storage upload failed:', await res.text());
+    return null;
+  }
+  return `${supabaseUrl}/storage/v1/object/public/recipe-files/${fileName}`;
+}
+
 function getOpenAI() {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error('OPENAI_API_KEY is not set');
@@ -124,7 +151,23 @@ export async function POST(request: Request) {
       extracted = await extractFromImage(base64);
     }
 
-    return NextResponse.json({ data: extracted });
+    // Try to upload file to Supabase Storage
+    let fileUrl: string | null = null;
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      fileUrl = await uploadToStorage(file, buffer);
+    } catch (e) {
+      console.error('File upload to storage failed:', e);
+    }
+
+    const data = extracted as Record<string, unknown>;
+    // Append source file URL to notes
+    if (fileUrl) {
+      data.notes = ((data.notes as string) || '') + '\n\nSource file: ' + fileUrl;
+    }
+
+    return NextResponse.json({ data, fileUrl });
   } catch (error) {
     console.error('Extract from file error:', error);
     const message = error instanceof Error ? error.message : 'Failed to extract recipe';

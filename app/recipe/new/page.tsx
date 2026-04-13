@@ -25,7 +25,9 @@ export default function NewRecipePage() {
   const [urlInput, setUrlInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form state
+  // Source tracking
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+  const [sourceFileUrl, setSourceFileUrl] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [servings, setServings] = useState(1);
   const [prepTime, setPrepTime] = useState('');
@@ -95,6 +97,8 @@ export default function NewRecipePage() {
         const normalized = normalizeExtractedData(json.data);
         applyExtractedData(normalized);
         setFormData(normalized);
+        setSourceFileUrl(json.fileUrl ?? null);
+        setSourceUrl(null);
         setActiveTab('manual');
       }
     } catch {
@@ -124,6 +128,8 @@ export default function NewRecipePage() {
         const normalized = normalizeExtractedData(json.data);
         applyExtractedData(normalized);
         setFormData(normalized);
+        setSourceUrl(json.sourceUrl ?? null);
+        setSourceFileUrl(null);
         setActiveTab('manual');
       }
     } catch {
@@ -157,6 +163,8 @@ export default function NewRecipePage() {
     setIngredients([emptyIngredient()]);
     setInstructions([emptyInstruction()]);
     setFormData(null);
+    setSourceUrl(null);
+    setSourceFileUrl(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -312,10 +320,20 @@ export default function NewRecipePage() {
         {activeTab === 'manual' && (
           <>
             {formData && (
-              <div className="flex items-center gap-3 bg-sage/10 border border-sage/30 rounded-lg px-4 py-3">
+              <div className="flex items-center gap-3 bg-sage/10 border border-sage/30 rounded-lg px-4 py-3 flex-wrap">
                 <span className="text-sage font-medium text-sm">
                   ✅ Recipe extracted — review and edit below before saving
                 </span>
+                {sourceUrl && (
+                  <span className="text-xs text-espresso/60">
+                    Extracted from: <a href={sourceUrl} target="_blank" rel="noopener noreferrer" className="text-caramel hover:underline">{sourceUrl}</a>
+                  </span>
+                )}
+                {sourceFileUrl && (
+                  <span className="text-xs text-espresso/60">
+                    Source file: <a href={sourceFileUrl} target="_blank" rel="noopener noreferrer" className="text-caramel hover:underline">{sourceFileUrl}</a>
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={clearExtractedData}

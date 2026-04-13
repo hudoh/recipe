@@ -118,7 +118,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Couldn't extract a recipe from this page. Please try entering it manually." }, { status: 422 });
     }
 
-    return NextResponse.json({ data: extracted });
+    const data = extracted as Record<string, unknown>;
+    // Append source URL to notes
+    data.notes = ((data.notes as string) || '') + '\n\nSource: ' + url;
+
+    return NextResponse.json({ data, sourceUrl: url });
   } catch (error) {
     console.error('Extract from URL error:', error);
     const message = error instanceof Error ? error.message : 'Failed to extract recipe';
