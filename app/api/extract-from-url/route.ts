@@ -30,6 +30,23 @@ Rules:
 - tags should be an array of strings`;
 
 async function scrapeUrl(url: string): Promise<string> {
+  // Try local browser scraper first (MacBook Air)
+  const scraperBase = process.env.SCRAPER_BASE_URL;
+  if (scraperBase) {
+    try {
+      const scraperUrl = `${scraperBase}/scrape?url=${encodeURIComponent(url)}`;
+      const scraperResponse = await fetch(scraperUrl, { signal: AbortSignal.timeout(45000) });
+      if (scraperResponse.ok) {
+        const html = await scraperResponse.text();
+        if (html && html.length > 100) {
+          return html;
+        }
+      }
+    } catch (e) {
+      console.log('Local scraper unavailable:', e instanceof Error ? e.message : e);
+    }
+  }
+
   // First try with realistic browser headers
   const response = await fetch(url, {
     headers: {
