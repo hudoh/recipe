@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { Recipe, RecipeFormData, Ingredient, Instruction } from '@/types/recipe';
 
 interface RecipeFormProps {
-  initialData?: Recipe;
+  initialData?: Partial<Recipe>;
   isEdit?: boolean;
 }
 
