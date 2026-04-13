@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { use, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ServingScaler from '@/components/ServingScaler';
 import IngredientList from '@/components/IngredientList';
 import type { Recipe } from '@/types/recipe';
 
-export default function RecipePage({ params }: { params: { id: string } }) {
+export default function RecipePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [currentServings, setCurrentServings] = useState(1);
@@ -16,7 +17,7 @@ export default function RecipePage({ params }: { params: { id: string } }) {
 
   const fetchRecipe = useCallback(async () => {
     try {
-      const res = await fetch(`/api/recipes/${params.id}`);
+      const res = await fetch(`/api/recipes/${id}`);
       if (!res.ok) throw new Error('Not found');
       const data: Recipe = await res.json();
       setRecipe(data);
@@ -26,14 +27,14 @@ export default function RecipePage({ params }: { params: { id: string } }) {
     } finally {
       setLoading(false);
     }
-  }, [params.id]);
+  }, [id]);
 
   useEffect(() => { fetchRecipe(); }, [fetchRecipe]);
 
   const handleDelete = async () => {
     if (!confirm(`Delete "${recipe?.name}"? This cannot be undone.`)) return;
     setDeleting(true);
-    await fetch(`/api/recipes/${params.id}`, { method: 'DELETE' });
+    await fetch(`/api/recipes/${id}`, { method: 'DELETE' });
     router.push('/');
     router.refresh();
   };
@@ -84,7 +85,7 @@ export default function RecipePage({ params }: { params: { id: string } }) {
               )}
             </div>
             <div className="flex gap-2 flex-shrink-0">
-              <Link href={`/recipe/${params.id}/edit`} className="px-4 py-2 bg-cream/10 hover:bg-cream/20 text-cream rounded-lg text-sm transition-colors">
+              <Link href={`/recipe/${id}/edit`} className="px-4 py-2 bg-cream/10 hover:bg-cream/20 text-cream rounded-lg text-sm transition-colors">
                 Edit
               </Link>
               <button
