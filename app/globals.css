@@ -7,49 +7,49 @@
 @media print {
   /* Hide everything by default */
   * {
-    visibility: hidden;
-  }
-
-  /* Only show the recipe content area */
-  .print-recipe,
-  .print-recipe * {
-    visibility: visible;
-  }
-
-  /* Position the recipe content at the top of the page */
-  .print-recipe {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-  }
-
-  /* Hide chrome: nav, buttons, header background */
-  .no-print,
-  header .no-print,
-  header a[href="/"],
-  header a[href^="/recipe/"],
-  header button,
-  .serving-scaler-section,
-  .action-buttons {
     display: none !important;
   }
 
-  /* Page setup */
+  /* Un-hide the recipe content area and its children */
+  .print-recipe,
+  .print-recipe * {
+    display: revert !important;
+  }
+
+  /* Re-enable block/inline as appropriate for key elements */
+  .print-recipe      { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
+  .print-recipe h1   { display: block !important; }
+  .print-recipe p    { display: block !important; }
+  .print-recipe ul   { display: block !important; }
+  .print-recipe ol   { display: block !important; }
+  .print-recipe li   { display: flex !important; }
+  .print-recipe span { display: inline !important; }
+  .print-recipe a    { display: inline !important; }
+  .print-recipe main { display: block !important; }
+  .print-recipe header { display: block !important; }
+
+  /* Revert the ingredient/instruction items back to flex so layout works */
+  .print-ingredient-item { display: flex !important; }
+  .print-instruction-item { display: flex !important; }
+  .print-ingredient-dot   { display: block !important; }
+  .print-instruction-number { display: flex !important; }
+
+  /* Print page setup */
   @page {
     margin: 0.75in;
     size: letter;
   }
 
+  /* Body: white background, serif font */
   body {
-    background: white !important;
-    color: black !important;
+    background: #fff !important;
+    color: #111 !important;
     font-family: Georgia, 'Times New Roman', serif !important;
     font-size: 11pt !important;
     line-height: 1.5 !important;
   }
 
-  /* Recipe header */
+  /* Recipe name — large heading */
   .print-recipe h1 {
     font-size: 22pt !important;
     font-weight: bold !important;
@@ -58,45 +58,39 @@
     page-break-after: avoid !important;
   }
 
+  /* Meta row: prep / cook / servings */
   .print-meta {
     font-size: 10pt !important;
     color: #444 !important;
-    display: flex !important;
     gap: 16pt !important;
     margin-bottom: 8pt !important;
   }
 
+  /* Tags (on cream background strip at top) */
   .print-tags {
-    display: flex !important;
     gap: 6pt !important;
     flex-wrap: wrap !important;
     margin-bottom: 8pt !important;
   }
 
-  .print-tag {
-    font-size: 8pt !important;
-    background: #eee !important;
-    color: #333 !important;
-    border-radius: 3pt !important;
-    padding: 1pt 6pt !important;
-  }
-
+  /* Notes — italic, below title */
   .print-notes {
     font-size: 9pt !important;
     color: #555 !important;
     font-style: italic !important;
-    margin-bottom: 10pt !important;
-    border-top: 0.5pt solid #ccc !important;
-    padding-top: 6pt !important;
+    margin-top: 8pt !important;
+    margin-bottom: 0 !important;
   }
 
-  /* Two-column layout for print */
+  /* Two-column body: ingredients left, instructions right */
   .print-body {
-    display: grid !important;
     grid-template-columns: 1fr 1.5fr !important;
     gap: 20pt !important;
+    display: grid !important;
+    margin-top: 12pt !important;
   }
 
+  /* Section headings */
   .print-section h2 {
     font-size: 12pt !important;
     font-weight: bold !important;
@@ -107,21 +101,15 @@
     page-break-after: avoid !important;
   }
 
-  /* Ingredients */
-  .print-ingredients {
-    list-style: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-
+  /* Ingredient list items */
   .print-ingredient-item {
-    display: flex !important;
-    align-items: flex-start !important;
-    gap: 6pt !important;
-    padding: 3pt 0 !important;
+    gap: 8pt !important;
+    padding: 2pt 0 !important;
     border-bottom: 0.25pt solid #eee !important;
     font-size: 10pt !important;
     page-break-inside: avoid !important;
+    background: transparent !important;
+    border: none !important;
   }
 
   .print-ingredient-dot {
@@ -133,43 +121,16 @@
     margin-top: 5pt !important;
   }
 
-  .print-ingredient-content {
-    font-size: 10pt !important;
-  }
+  .print-ingredient-amount { font-weight: bold !important; }
+  .print-ingredient-unit    { margin-right: 4pt !important; }
+  .print-ingredient-item-name { color: #111 !important; }
+  .print-ingredient-notes   { font-size: 8pt !important; color: #666 !important; font-style: italic !important; display: block !important; margin-top: 1pt !important; }
 
-  .print-ingredient-amount {
-    font-weight: bold !important;
-  }
-
-  .print-ingredient-unit {
-    margin-right: 4pt !important;
-  }
-
-  .print-ingredient-item-name {
-    color: #111 !important;
-  }
-
-  .print-ingredient-notes {
-    font-size: 8pt !important;
-    color: #666 !important;
-    font-style: italic !important;
-    display: block !important;
-  }
-
-  /* Instructions */
-  .print-instructions {
-    list-style: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    counter-reset: none !important;
-  }
-
+  /* Instruction items */
   .print-instruction-item {
-    display: flex !important;
     gap: 10pt !important;
     margin-bottom: 8pt !important;
     page-break-inside: avoid !important;
-    align-items: flex-start !important;
   }
 
   .print-instruction-number {
@@ -180,10 +141,10 @@
     color: #2C1810 !important;
     font-size: 9pt !important;
     font-weight: bold !important;
-    display: flex !important;
-    align-items: center !important;
     justify-content: center !important;
+    align-items: center !important;
     flex-shrink: 0 !important;
+    display: flex !important;
   }
 
   .print-instruction-step {
@@ -202,9 +163,10 @@
     border-top: 0.5pt solid #ddd !important;
   }
 
-  .print-source a {
-    color: #888 !important;
-  }
+  .print-source a { color: #888 !important; }
+
+  /* Scale ratio indicator — hide the ×1.00 in print */
+  .print-section h2 span { display: none !important; }
 }
 
 @theme {
