@@ -314,16 +314,17 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
                 );
               })}
             </ul>
-          </div>
 
-          {/* Right column: Instructions + Nutrition */}
-          <div className="lg:col-span-3">
-            {/* Nutrition Facts */}
+            {/* Nutrition Facts — below ingredients */}
             {recipe.nutrition && (
-              <div className="mb-8 print-section">
+              <div className="mt-6 print-section">
                 <NutritionFactsBox nutrition={recipe.nutrition} servings={recipe.servings} />
               </div>
             )}
+          </div>
+
+          {/* Right column: Instructions */}
+          <div className="lg:col-span-3">
 
             {/* Instructions */}
             <div className="print-section">
