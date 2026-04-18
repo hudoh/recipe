@@ -106,6 +106,7 @@ async function extractFromText(text: string): Promise<unknown> {
 }
 
 export async function POST(request: Request) {
+  console.log('extract-from-file called, content-length:', request.headers.get('content-length'));
   try {
     const formData = await request.formData();
     const files = formData.getAll('files') as File[];
