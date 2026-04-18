@@ -52,7 +52,7 @@ Rules:
 - Return ONLY the JSON object, nothing else
 - ALWAYS extract: name (recipe title), servings (as a number, e.g. 4), prep_time (e.g. "15 min"), cook_time (e.g. "45 min"), tags (array of strings). These are required.
 - If you cannot determine the recipe name, use "Untitled Recipe" — never leave name empty.
-- If you cannot determine servings, use 4 as a reasonable default — never leave servings empty.
+- If you cannot determine servings, leave it null or omit the field — do NOT guess a number.
 - ingredient amounts MUST be decimal numbers (e.g. 0.5 not 1/2, 0.25 not 1/4, 1.5 not 1 1/2). Convert all fractions to decimals.
 - ingredients should have item, amount, unit, notes fields
 - instructions should be an array of {step} objects
@@ -192,13 +192,12 @@ export async function POST(request: Request) {
         mergedExtracted.ingredients = [...existingIngredients, ...uniqueNew];
       }
 
-      // Merge instructions (drop "Photo X:" prefix — only add for disambiguation when multiple images)
+      // Merge instructions — no Photo X: prefix; all photos are one recipe
       const existingInstructions = (mergedExtracted.instructions as Array<Record<string, unknown>> | undefined) || [];
       const newInstructions = (imgExtracted.instructions as Array<Record<string, unknown>> | undefined) || [];
       if (newInstructions.length > 0) {
-        const prefix = imageFiles.length > 1 ? `Photo ${imgIdx + 1}: ` : '';
         mergedExtracted.instructions = [...existingInstructions, ...newInstructions.map((s: Record<string, unknown>) => ({
-          step: (prefix + String(s.step ?? '')).trim()
+          step: String(s.step ?? '').replace(/^Photo \d+:\s*/i, '').trim()
         }))];
       }
 

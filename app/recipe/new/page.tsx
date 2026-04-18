@@ -70,7 +70,7 @@ export default function NewRecipePage() {
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [sourceFileUrl, setSourceFileUrl] = useState<string | null>(null);
   const [name, setName] = useState('');
-  const [servings, setServings] = useState(1);
+  const [servings, setServings] = useState<number | null>(null);
   const [prepTime, setPrepTime] = useState('');
   const [cookTime, setCookTime] = useState('');
   const [notes, setNotes] = useState('');
@@ -80,7 +80,7 @@ export default function NewRecipePage() {
 
   const applyExtractedData = useCallback((data: RecipeFormData) => {
     setName(data.name ?? '');
-    setServings(data.servings ?? 1);
+    setServings(typeof data.servings === 'number' ? data.servings : null);
     setPrepTime(data.prep_time ?? '');
     setCookTime(data.cook_time ?? '');
     setNotes(data.notes ?? '');
@@ -478,7 +478,7 @@ export default function NewRecipePage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-espresso mb-1">Servings *</label>
-                    <input type="number" required min="1" value={servings} onChange={e => setServings(parseInt(e.target.value) || 1)} className="input-field" />
+                    <input type="number" min="1" placeholder="e.g. 4" value={servings ?? ''} onChange={e => setServings(e.target.value ? parseInt(e.target.value) : null)} className="input-field" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-espresso mb-1">Prep Time</label>
@@ -553,7 +553,7 @@ function normalizeExtractedData(data: unknown): RecipeFormData {
   const d = data as Record<string, unknown>;
   return {
     name: String(d.name ?? ''),
-    servings: typeof d.servings === 'number' ? d.servings : 1,
+    servings: typeof d.servings === 'number' ? d.servings : null,
     prep_time: String(d.prep_time ?? ''),
     cook_time: String(d.cook_time ?? ''),
     ingredients: (Array.isArray(d.ingredients) ? d.ingredients : []).map((ing: unknown) => {

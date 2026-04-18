@@ -22,7 +22,7 @@ export type Nutrition = {
 export type Recipe = {
   id: string;
   name: string;
-  servings: number;
+  servings?: number | null;
   prep_time: string;
   cook_time: string;
   ingredients: Ingredient[];

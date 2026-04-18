@@ -111,7 +111,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
       if (!res.ok) throw new Error('Not found');
       const data: Recipe = await res.json();
       setRecipe(data);
-      setCurrentServings(data.servings);
+      setCurrentServings(data.servings ?? 1);
       setUserRating(data.rating ?? null);
     } catch {
       setRecipe(null);
@@ -147,7 +147,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
     );
   }
 
-  const scaleRatio = currentServings / recipe.servings;
+  const scaleRatio = recipe.servings ? currentServings / recipe.servings : 1;
 
   return (
     <div className="min-h-screen">
@@ -272,7 +272,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
             <p className="text-sm text-espresso/60">Ingredient amounts update instantly</p>
           </div>
           <ServingScaler
-            baseServings={recipe.servings}
+            baseServings={recipe.servings ?? 1}
             currentServings={currentServings}
             onServingsChange={setCurrentServings}
           />
@@ -339,7 +339,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
             {/* Nutrition Facts — below ingredients */}
             {recipe.nutrition && (
               <div className="mt-6 print-section">
-                <NutritionFactsBox nutrition={recipe.nutrition} servings={recipe.servings} />
+                <NutritionFactsBox nutrition={recipe.nutrition} servings={recipe.servings ?? 1} />
               </div>
             )}
           </div>
