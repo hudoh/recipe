@@ -12,24 +12,40 @@ const emptyIngredient = (): Ingredient => ({ item: '', amount: '', unit: '', not
 /** Resize an image file to max 1200px on longest side, compress to JPEG 0.8 quality */
 async function resizeImage(file: File, maxDim = 1200, quality = 0.8): Promise<File> {
   return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-      const w = Math.round(img.width * scale);
-      const h = Math.round(img.height * scale);
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d')!;
-      ctx.drawImage(img, 0, 0, w, h);
-      canvas.toBlob(blob => {
-        if (!blob) { resolve(file); return; }
-        const resized = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
-        resolve(resized);
-      }, 'image/jpeg', quality);
-    };
-    img.onerror = () => resolve(file);
-    img.src = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d')!;
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(blob => {
+            if (!blob) { resolve(file); return; }
+            // Wrap blob in a proper File object
+            try {
+              const renamed = file.name.replace(/\.[^.]+$/, '.jpg');
+              const resizedFile = new File([blob], renamed, { type: 'image/jpeg' });
+              resolve(resizedFile);
+            } catch {
+              // Fallback: return original file if File constructor fails
+              resolve(file);
+            }
+          }, 'image/jpeg', quality);
+        } catch {
+          resolve(file);
+        }
+      };
+      img.onerror = () => resolve(file);
+      const objectUrl = URL.createObjectURL(file);
+      img.src = objectUrl;
+    } catch {
+      resolve(file);
+    }
   });
 }
 const emptyInstruction = (): Instruction => ({ step: '' });
