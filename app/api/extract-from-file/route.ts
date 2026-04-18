@@ -50,12 +50,14 @@ const EXTRACTION_PROMPT = `You are a recipe extraction assistant. Given recipe c
 
 Rules:
 - Return ONLY the JSON object, nothing else
-- If you can't extract a field, use a reasonable default or empty value
-- servings should be a number
+- ALWAYS extract: name (recipe title), servings (as a number, e.g. 4), prep_time (e.g. "15 min"), cook_time (e.g. "45 min"), tags (array of strings). These are required.
+- If you cannot determine the recipe name, use "Untitled Recipe" — never leave name empty.
+- If you cannot determine servings, use 4 as a reasonable default — never leave servings empty.
 - ingredient amounts MUST be decimal numbers (e.g. 0.5 not 1/2, 0.25 not 1/4, 1.5 not 1 1/2). Convert all fractions to decimals.
 - ingredients should have item, amount, unit, notes fields
 - instructions should be an array of {step} objects
-- tags should be an array of strings`;
+- tags should be an array of strings
+- notes should be any tips, variations, or source information`;
 
 const VISION_PROMPT = `${EXTRACTION_PROMPT}
 
@@ -163,29 +165,40 @@ export async function POST(request: Request) {
     }
 
     // Extract from images and merge results
+    // Metadata (name, servings, prep_time, cook_time, tags) comes from the first available source only
     let mergedExtracted: Record<string, unknown> = docExtracted ? { ...docExtracted } : {};
-    for (const file of imageFiles) {
+    for (let imgIdx = 0; imgIdx < imageFiles.length; imgIdx++) {
+      const file = imageFiles[imgIdx];
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       const base64 = buffer.toString('base64');
       const imgExtracted = await extractFromImage(base64) as Record<string, unknown>;
 
-      // Merge ingredients
+      // On first image (or if no doc), pull metadata from this image
+      if (imgIdx === 0 && !docExtracted) {
+        if (imgExtracted.name) mergedExtracted.name = imgExtracted.name;
+        if (imgExtracted.servings) mergedExtracted.servings = imgExtracted.servings;
+        if (imgExtracted.prep_time) mergedExtracted.prep_time = imgExtracted.prep_time;
+        if (imgExtracted.cook_time) mergedExtracted.cook_time = imgExtracted.cook_time;
+        if (imgExtracted.tags) mergedExtracted.tags = imgExtracted.tags;
+      }
+
+      // Merge ingredients (dedup)
       const existingIngredients = (mergedExtracted.ingredients as Array<Record<string, unknown>> | undefined) || [];
       const newIngredients = (imgExtracted.ingredients as Array<Record<string, unknown>> | undefined) || [];
-      // Avoid duplicates: skip ingredients already in the list (by item name)
       const existingNames = new Set(existingIngredients.map((i: Record<string, unknown>) => String(i.item).toLowerCase()));
       const uniqueNew = newIngredients.filter((i: Record<string, unknown>) => !existingNames.has(String(i.item).toLowerCase()));
       if (uniqueNew.length > 0) {
         mergedExtracted.ingredients = [...existingIngredients, ...uniqueNew];
       }
 
-      // Merge instructions
+      // Merge instructions (drop "Photo X:" prefix — only add for disambiguation when multiple images)
       const existingInstructions = (mergedExtracted.instructions as Array<Record<string, unknown>> | undefined) || [];
       const newInstructions = (imgExtracted.instructions as Array<Record<string, unknown>> | undefined) || [];
       if (newInstructions.length > 0) {
-        mergedExtracted.instructions = [...existingInstructions, ...newInstructions.map((s: Record<string, unknown>, idx: number) => ({
-          step: s.step ? `Photo ${imageFiles.indexOf(file) + 1}: ${s.step}` : `Photo ${imageFiles.indexOf(file) + 1} instruction ${idx + 1}`
+        const prefix = imageFiles.length > 1 ? `Photo ${imgIdx + 1}: ` : '';
+        mergedExtracted.instructions = [...existingInstructions, ...newInstructions.map((s: Record<string, unknown>) => ({
+          step: (prefix + String(s.step ?? '')).trim()
         }))];
       }
 
