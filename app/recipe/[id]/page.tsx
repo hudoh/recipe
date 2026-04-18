@@ -6,6 +6,27 @@ import { useRouter } from 'next/navigation';
 import ServingScaler from '@/components/ServingScaler';
 import type { Recipe, Nutrition } from '@/types/recipe';
 
+/** Parse a fraction or mixed number string like "1/2", "1 1/2", "3/4" into a numeric value */
+function parseFraction(str: string): number {
+  const s = str.trim();
+  if (!s) return NaN;
+  // Mixed fraction: "1 1/2" → whole + fraction
+  const mixedMatch = s.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)$/);
+  if (mixedMatch) {
+    const whole = parseInt(mixedMatch[1]);
+    const num = parseInt(mixedMatch[2]);
+    const den = parseInt(mixedMatch[3]);
+    return whole + num / den;
+  }
+  // Simple fraction: "1/2"
+  const fracMatch = s.match(/^(\d+)\s*\/\s*(\d+)$/);
+  if (fracMatch) {
+    return parseInt(fracMatch[1]) / parseInt(fracMatch[2]);
+  }
+  // Plain number
+  return parseFloat(s);
+}
+
 function NutritionFactsBox({ nutrition, servings }: { nutrition: Nutrition; servings: number }) {
   return (
     <div className="bg-white rounded-xl p-5 border border-espresso/10 print-section">
@@ -296,7 +317,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
             </h2>
             <ul className="space-y-3">
               {recipe.ingredients?.map((ing, i) => {
-                const num = parseFloat(ing.amount);
+                const num = parseFraction(ing.amount);
                 const scaled = isNaN(num) ? ing.amount : num * scaleRatio;
                 const scaledAmount = Number.isInteger(scaled) ? String(scaled) : Number(scaled).toFixed(2).replace(/\.?0+$/, '');
                 return (

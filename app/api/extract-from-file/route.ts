@@ -52,6 +52,7 @@ Rules:
 - Return ONLY the JSON object, nothing else
 - If you can't extract a field, use a reasonable default or empty value
 - servings should be a number
+- ingredient amounts MUST be decimal numbers (e.g. 0.5 not 1/2, 0.25 not 1/4, 1.5 not 1 1/2). Convert all fractions to decimals.
 - ingredients should have item, amount, unit, notes fields
 - instructions should be an array of {step} objects
 - tags should be an array of strings`;
@@ -107,15 +108,17 @@ async function extractFromText(text: string): Promise<unknown> {
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
-    const file = formData.get('file') as File | null;
+    const files = formData.getAll('files') as File[];
 
-    if (!file) {
+    if (files.length === 0) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
     const MAX_SIZE = 10 * 1024 * 1024; // 10MB
-    if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: 'File too large. Maximum size is 10MB.' }, { status: 400 });
+    for (const file of files) {
+      if (file.size > MAX_SIZE) {
+        return NextResponse.json({ error: `File "${file.name}" is too large. Maximum size is 10MB.` }, { status: 400 });
+      }
     }
 
     const allowedTypes = [
@@ -123,51 +126,94 @@ export async function POST(request: Request) {
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     ];
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Unsupported file type. Please upload an image, PDF, or Word document.' }, { status: 400 });
+    for (const file of files) {
+      if (!allowedTypes.includes(file.type)) {
+        return NextResponse.json({ error: `Unsupported file type for "${file.name}". Please upload an image, PDF, or Word document.` }, { status: 400 });
+      }
     }
 
-    let extracted: unknown;
+    // Separate images from docs
+    const imageFiles = files.filter(f => f.type.startsWith('image/'));
+    const docFiles = files.filter(f => !f.type.startsWith('image/'));
 
-    if (file.type === 'application/pdf') {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require('pdf-parse');
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      const pdfData = await pdfParse(buffer);
-      extracted = await extractFromText(pdfData.text);
-    } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const mammoth = require('mammoth');
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      const result = await mammoth.extractRawText({ buffer });
-      extracted = await extractFromText(result.value);
-    } else {
-      // Image file
+    // Extract from text-based docs first (PDF, Word) — single source of truth
+    let docExtracted: Record<string, unknown> | null = null;
+    for (const file of docFiles) {
+      let text = '';
+      if (file.type === 'application/pdf') {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const pdfParse = require('pdf-parse');
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const pdfData = await pdfParse(buffer);
+        text = pdfData.text;
+      } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const mammoth = require('mammoth');
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const result = await mammoth.extractRawText({ buffer });
+        text = result.value;
+      }
+      if (text) {
+        docExtracted = await extractFromText(text) as Record<string, unknown>;
+        break; // only process first doc
+      }
+    }
+
+    // Extract from images and merge results
+    let mergedExtracted: Record<string, unknown> = docExtracted ? { ...docExtracted } : {};
+    for (const file of imageFiles) {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       const base64 = buffer.toString('base64');
-      extracted = await extractFromImage(base64);
+      const imgExtracted = await extractFromImage(base64) as Record<string, unknown>;
+
+      // Merge ingredients
+      const existingIngredients = (mergedExtracted.ingredients as Array<Record<string, unknown>> | undefined) || [];
+      const newIngredients = (imgExtracted.ingredients as Array<Record<string, unknown>> | undefined) || [];
+      // Avoid duplicates: skip ingredients already in the list (by item name)
+      const existingNames = new Set(existingIngredients.map((i: Record<string, unknown>) => String(i.item).toLowerCase()));
+      const uniqueNew = newIngredients.filter((i: Record<string, unknown>) => !existingNames.has(String(i.item).toLowerCase()));
+      if (uniqueNew.length > 0) {
+        mergedExtracted.ingredients = [...existingIngredients, ...uniqueNew];
+      }
+
+      // Merge instructions
+      const existingInstructions = (mergedExtracted.instructions as Array<Record<string, unknown>> | undefined) || [];
+      const newInstructions = (imgExtracted.instructions as Array<Record<string, unknown>> | undefined) || [];
+      if (newInstructions.length > 0) {
+        mergedExtracted.instructions = [...existingInstructions, ...newInstructions.map((s: Record<string, unknown>, idx: number) => ({
+          step: s.step ? `Photo ${imageFiles.indexOf(file) + 1}: ${s.step}` : `Photo ${imageFiles.indexOf(file) + 1} instruction ${idx + 1}`
+        }))];
+      }
+
+      // Merge notes
+      if (imgExtracted.notes) {
+        mergedExtracted.notes = ((mergedExtracted.notes as string) || '') + (mergedExtracted.notes ? '; ' : '') + imgExtracted.notes;
+      }
     }
 
-    // Try to upload file to Supabase Storage
-    let fileUrl: string | null = null;
+    // Upload all files to Supabase Storage
+    let fileUrls: string[] = [];
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-      fileUrl = await uploadToStorage(file, buffer);
+      for (const file of files) {
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        const url = await uploadToStorage(file, buffer);
+        if (url) fileUrls.push(url);
+      }
     } catch (e) {
       console.error('File upload to storage failed:', e);
     }
 
-    const data = extracted as Record<string, unknown>;
-    // Append source file URL to notes
-    if (fileUrl) {
-      data.notes = ((data.notes as string) || '') + '\n\nSource file: ' + fileUrl;
+    const data = mergedExtracted;
+    // Append source file URLs to notes
+    if (fileUrls.length > 0) {
+      data.notes = ((data.notes as string) || '') + '\n\nSource files: ' + fileUrls.join(', ');
     }
 
-    return NextResponse.json({ data, fileUrl });
+    return NextResponse.json({ data, fileUrls });
   } catch (error) {
     console.error('Extract from file error:', error);
     const message = error instanceof Error ? error.message : 'Failed to extract recipe';

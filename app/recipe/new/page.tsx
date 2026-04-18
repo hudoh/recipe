@@ -20,10 +20,11 @@ export default function NewRecipePage() {
   const [formData, setFormData] = useState<RecipeFormData | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [extractionError, setExtractionError] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [urlInput, setUrlInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // Source tracking
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
@@ -49,34 +50,57 @@ export default function NewRecipePage() {
   }, []);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null;
-    setSelectedFile(file);
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setSelectedFiles(prev => [...prev, ...files]);
     setExtractionError('');
     setFormData(null);
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setPreviewUrl(ev.target?.result as string);
-      reader.readAsDataURL(file);
-    } else {
-      setPreviewUrl(null);
-    }
+    files.forEach(file => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setPreviewUrls(prev => prev.length < 4 ? [...prev, ev.target?.result as string] : prev);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    // Reset input so same file can be selected again
+    e.target.value = '';
+  }, []);
+
+  const handleCameraChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setSelectedFiles(prev => [...prev, ...files]);
+    setExtractionError('');
+    setFormData(null);
+    files.forEach(file => {
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          setPreviewUrls(prev => prev.length < 4 ? [...prev, ev.target?.result as string] : prev);
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+    e.target.value = '';
   }, []);
 
   const handleFileDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (file) {
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      if (fileInputRef.current) fileInputRef.current.files = dt.files;
-      const event = { target: fileInputRef.current } as unknown as React.ChangeEvent<HTMLInputElement>;
-      handleFileChange(event);
-    }
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+    const dt = new DataTransfer();
+    files.forEach(f => dt.items.add(f));
+    if (fileInputRef.current) fileInputRef.current.files = dt.files;
+    const event = { target: fileInputRef.current } as unknown as React.ChangeEvent<HTMLInputElement>;
+    handleFileChange(event);
   }, [handleFileChange]);
 
   const handleExtractFile = async () => {
-    if (!selectedFile) return;
-    if (selectedFile.size > MAX_FILE_SIZE) {
+    if (selectedFiles.length === 0) return;
+    const oversized = selectedFiles.filter(f => f.size > MAX_FILE_SIZE);
+    if (oversized.length > 0) {
       setExtractionError('File too large. Maximum size is 10MB.');
       return;
     }
@@ -85,7 +109,7 @@ export default function NewRecipePage() {
     setExtractionError('');
 
     const fd = new FormData();
-    fd.append('file', selectedFile);
+    selectedFiles.forEach(f => fd.append('files', f));
 
     try {
       const res = await fetch('/api/extract-from-file', { method: 'POST', body: fd });
@@ -235,49 +259,71 @@ export default function NewRecipePage() {
               Upload an image (JPG, PNG, WebP, GIF), PDF, or Word document containing a recipe.
               We'll extract the recipe data using AI.
             </p>
+            {/* File drop zone — opens photo library picker (no capture=environment) */}
             <div
               onDrop={handleFileDrop}
               onDragOver={(e) => e.preventDefault()}
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-espresso/20 rounded-xl p-8 text-center cursor-pointer hover:border-caramel hover:bg-caramel/5 transition-colors"
+              className="border-2 border-dashed border-espresso/20 rounded-xl p-6 text-center cursor-pointer hover:border-caramel hover:bg-caramel/5 transition-colors"
             >
               <input
                 ref={fileInputRef}
                 type="file"
                 accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.docx"
-                capture="environment"
+                multiple
                 onChange={handleFileChange}
                 className="hidden"
               />
-              {previewUrl ? (
-                <img src={previewUrl} alt="Preview" className="max-h-48 mx-auto rounded-lg object-contain" />
-              ) : selectedFile ? (
-                <div className="space-y-2">
-                  <span className="text-2xl">📄</span>
-                  <p className="font-medium text-espresso">{selectedFile.name}</p>
-                  <p className="text-xs text-espresso/50">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+              {/* Camera shortcut button */}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); cameraInputRef.current?.click(); }}
+                className="mb-3 inline-flex items-center gap-2 px-4 py-2 bg-sage/10 text-sage rounded-lg text-sm hover:bg-sage/20 transition-colors"
+              >
+                📷 Take Photo
+              </button>
+              {/* Image previews */}
+              {previewUrls.length > 0 && (
+                <div className="flex gap-2 flex-wrap justify-center mb-3">
+                  {previewUrls.map((url, i) => (
+                    <div key={i} className="relative group">
+                      <img src={url} alt={`Preview ${i + 1}`} className="h-20 w-20 object-cover rounded-lg" />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewUrls(prev => prev.filter((_, j) => j !== i));
+                          setSelectedFiles(prev => prev.filter((_, j) => j !== i));
+                        }}
+                        className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedFiles.length > 0 ? (
+                <div className="space-y-1">
+                  <p className="font-medium text-espresso">{selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''} selected</p>
+                  {selectedFiles.some(f => f.type === 'application/pdf') && <p className="text-xs text-espresso/60">📕 PDF — will extract text with AI</p>}
+                  {selectedFiles.some(f => f.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') && <p className="text-xs text-espresso/60">📘 Word — will extract text with AI</p>}
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <span className="text-4xl">📁</span>
-                  <p className="font-medium text-espresso">Click or drag & drop to upload</p>
-                  <p className="text-xs text-espresso/50">JPG, PNG, WebP, GIF, PDF, or Word (.docx) — max 10MB</p>
+                <div className="space-y-1">
+                  <span className="text-3xl">📁</span>
+                  <p className="font-medium text-espresso">Click to choose files or drag & drop</p>
+                  <p className="text-xs text-espresso/50">JPG, PNG, WebP, GIF, PDF, Word — up to 4 images</p>
                 </div>
               )}
             </div>
-            {selectedFile && !previewUrl && (
-              <p className="text-xs text-espresso/50 text-center">
-                {selectedFile.type === 'application/pdf' && '📕 PDF detected — will extract text with AI'}
-                {selectedFile.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' && '📘 Word document detected — will extract text with AI'}
-              </p>
-            )}
             {extractionError && (
               <div className="bg-red-50 border border-red-300 text-red-700 px-4 py-3 rounded-lg text-sm">{extractionError}</div>
             )}
             <button
               type="button"
               onClick={handleExtractFile}
-              disabled={!selectedFile || extracting}
+              disabled={selectedFiles.length === 0 || extracting}
               className="btn-caramel disabled:opacity-50 w-full"
             >
               {extracting ? '🔍 Analyzing recipe...' : 'Extract Recipe'}
