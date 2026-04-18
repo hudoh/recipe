@@ -110,6 +110,7 @@ export default function NewRecipePage() {
 
     const fd = new FormData();
     selectedFiles.forEach(f => fd.append('files', f));
+    console.log('[extract] sending', selectedFiles.length, 'files, total size:', selectedFiles.reduce((a, f) => a + f.size, 0), 'bytes');
 
     try {
       const controller = new AbortController();
