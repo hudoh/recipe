@@ -8,6 +8,30 @@ type Tab = 'manual' | 'upload' | 'url';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const emptyIngredient = (): Ingredient => ({ item: '', amount: '', unit: '', notes: '' });
+
+/** Resize an image file to max 1200px on longest side, compress to JPEG 0.8 quality */
+async function resizeImage(file: File, maxDim = 1200, quality = 0.8): Promise<File> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => {
+        if (!blob) { resolve(file); return; }
+        const resized = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' });
+        resolve(resized);
+      }, 'image/jpeg', quality);
+    };
+    img.onerror = () => resolve(file);
+    img.src = URL.createObjectURL(file);
+  });
+}
 const emptyInstruction = (): Instruction => ({ step: '' });
 
 export default function NewRecipePage() {
@@ -49,18 +73,27 @@ export default function NewRecipePage() {
     setInstructions(data.instructions?.length ? data.instructions : [emptyInstruction()]);
   }, []);
 
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
-    setSelectedFiles(prev => [...prev, ...files]);
     setExtractionError('');
     setFormData(null);
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
+    // Resize images before storing (compresses HEIC/large photos for upload)
+    const processed = await Promise.all(files.map(async (f) => {
+      if (f.type.startsWith('image/')) {
+        const resized = await resizeImage(f);
+        return { file: resized, preview: URL.createObjectURL(resized) };
+      }
+      return { file: f, preview: null };
+    }));
+    processed.forEach(({ file, preview }) => {
+      setSelectedFiles(prev => prev.length < 4 ? [...prev, file] : prev);
+      if (preview) {
+        setPreviewUrls(prev => prev.length < 4 ? [...prev, preview] : prev);
+      } else if (file.type.startsWith('image/')) {
+        // Fallback for non-image files that somehow got here
         const reader = new FileReader();
-        reader.onload = (ev) => {
-          setPreviewUrls(prev => prev.length < 4 ? [...prev, ev.target?.result as string] : prev);
-        };
+        reader.onload = (ev) => setPreviewUrls(prev => prev.length < 4 ? [...prev, ev.target?.result as string] : prev);
         reader.readAsDataURL(file);
       }
     });
@@ -68,19 +101,22 @@ export default function NewRecipePage() {
     e.target.value = '';
   }, []);
 
-  const handleCameraChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCameraChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) return;
-    setSelectedFiles(prev => [...prev, ...files]);
     setExtractionError('');
     setFormData(null);
-    files.forEach(file => {
-      if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-          setPreviewUrls(prev => prev.length < 4 ? [...prev, ev.target?.result as string] : prev);
-        };
-        reader.readAsDataURL(file);
+    const processed = await Promise.all(files.map(async (f) => {
+      if (f.type.startsWith('image/')) {
+        const resized = await resizeImage(f);
+        return { file: resized, preview: URL.createObjectURL(resized) };
+      }
+      return { file: f, preview: null };
+    }));
+    processed.forEach(({ file, preview }) => {
+      setSelectedFiles(prev => prev.length < 4 ? [...prev, file] : prev);
+      if (preview) {
+        setPreviewUrls(prev => prev.length < 4 ? [...prev, preview] : prev);
       }
     });
     e.target.value = '';
