@@ -112,7 +112,10 @@ export default function NewRecipePage() {
     selectedFiles.forEach(f => fd.append('files', f));
 
     try {
-      const res = await fetch('/api/extract-from-file', { method: 'POST', body: fd });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 45_000); // 45s timeout
+      const res = await fetch('/api/extract-from-file', { method: 'POST', body: fd, signal: controller.signal as RequestInit['signal'] });
+      clearTimeout(timer);
       const json = await res.json();
 
       if (!res.ok) {
@@ -121,12 +124,16 @@ export default function NewRecipePage() {
         const normalized = normalizeExtractedData(json.data);
         applyExtractedData(normalized);
         setFormData(normalized);
-        setSourceFileUrl(json.fileUrl ?? null);
+        setSourceFileUrl(Array.isArray(json.fileUrls) ? json.fileUrls[0] ?? null : (json.fileUrl ?? null));
         setSourceUrl(null);
         setActiveTab('manual');
       }
-    } catch {
-      setExtractionError('Network error. Please check your connection and try again.');
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') {
+        setExtractionError('This is taking longer than expected. The image may be too large — try a smaller file or fewer photos.');
+      } else {
+        setExtractionError('Network error. Please check your connection and try again.');
+      }
     } finally {
       setExtracting(false);
     }
@@ -326,7 +333,7 @@ export default function NewRecipePage() {
               disabled={selectedFiles.length === 0 || extracting}
               className="btn-caramel disabled:opacity-50 w-full"
             >
-              {extracting ? '🔍 Analyzing recipe...' : 'Extract Recipe'}
+              {extracting ? '🔍 Extracting recipe (may take up to 30s)…' : 'Extract Recipe'}
             </button>
           </div>
         )}
