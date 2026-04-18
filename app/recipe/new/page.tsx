@@ -130,8 +130,11 @@ export default function NewRecipePage() {
         setActiveTab('manual');
       }
     } catch (err) {
+      console.error('[extract] fetch error:', err);
       if (err instanceof Error && err.name === 'AbortError') {
         setExtractionError('This is taking longer than expected. The image may be too large — try a smaller file or fewer photos.');
+      } else if (err instanceof Error) {
+        setExtractionError('Error: ' + err.message);
       } else {
         setExtractionError('Network error. Please check your connection and try again.');
       }
@@ -274,12 +277,22 @@ export default function NewRecipePage() {
               onClick={() => fileInputRef.current?.click()}
               className="border-2 border-dashed border-espresso/20 rounded-xl p-6 text-center cursor-pointer hover:border-caramel hover:bg-caramel/5 transition-colors"
             >
+              {/* Photo library picker */}
               <input
                 ref={fileInputRef}
                 type="file"
                 accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.docx"
                 multiple
                 onChange={handleFileChange}
+                className="hidden"
+              />
+              {/* Camera input — triggered by the Take Photo button */}
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleCameraChange}
                 className="hidden"
               />
               {/* Camera shortcut button */}
