@@ -12,22 +12,25 @@ const EXTRACTION_PROMPT = `You are a recipe extraction assistant. Given recipe c
 
 {
   "name": "Recipe Name",
-  "servings": number,
-  "prep_time": "e.g. 15 min",
-  "cook_time": "e.g. 45 min",
-  "ingredients": [{"item": "ingredient name", "amount": "amount", "unit": "unit", "notes": "optional notes"}],
-  "instructions": [{"step": "instruction step"}],
-  "tags": ["tag1", "tag2"],
-  "notes": "optional notes or tips"
+  "servings": number or null,
+  "prep_time": "e.g. 15 min" or null,
+  "cook_time": "e.g. 45 min" or null,
+  "ingredients": [{"item": "ingredient name", "amount": "amount as written" or null, "unit": "unit as written" or null, "notes": "optional notes" or null}],
+  "instructions": [{"step": "exact instruction text from the recipe"}],
+  "tags": ["tag1", "tag2"] or null,
+  "notes": "optional notes from recipe" or null
 }
 
 Rules:
 - Return ONLY the JSON object, nothing else
-- If you can't extract a field, use a reasonable default or empty value
-- servings should be a number
+- Copy ingredient amounts and units EXACTLY as written — do not convert, simplify, or rephrase them (e.g., keep \"1/2 cup\" as \"1/2 cup\", not \"4 oz\" or \"1 stick\")
+- Copy instruction text EXACTLY as written — do not paraphrase, expand abbreviations, or rephrase
+- If a field cannot be determined from the page, use null — do NOT guess or invent values
+- servings should be a number if detected, null if not found
 - ingredients should have item, amount, unit, notes fields
 - instructions should be an array of {step} objects
-- tags should be an array of strings`;
+- tags should be an array of lowercase strings or null
+- Do not add, combine, split, or modify any ingredient or instruction`
 
 async function tryApify(url: string): Promise<string | null> {
   const apifyKey = process.env.APIFY_API_KEY;
