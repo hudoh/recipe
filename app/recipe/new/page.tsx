@@ -59,7 +59,7 @@ export default function NewRecipePage() {
   // Extracted data state
   const [formData, setFormData] = useState<RecipeFormData | null>(null);
   const [extracting, setExtracting] = useState(false);
-  const [extractionError, setExtractionError] = useState('');
+  const [extractionError, setExtractionError] = useState<React.ReactNode>('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [urlInput, setUrlInput] = useState('');
@@ -210,9 +210,27 @@ export default function NewRecipePage() {
       const json = await res.json();
 
       if (!res.ok) {
-        setExtractionError(json.error ?? 'Couldn\'t extract a recipe from this URL. Please try entering manually.');
+        const errorMsg = json.error ?? 'Couldn\'t extract a recipe from this URL.';
+        // If the site blocked us, suggest photo upload as fallback
+        if (errorMsg.includes('blocks automated') || errorMsg.includes('Firecrawl') || errorMsg.includes('manual')) {
+          setExtractionError(
+            <span>{errorMsg} <button type="button" onClick={() => setActiveTab('upload')} className="underline text-caramel hover:text-espresso font-medium">Try the Upload tab instead</button> — photograph the recipe from your phone for reliable extraction.</span>
+          );
+        } else {
+          setExtractionError(errorMsg);
+        }
       } else {
         const normalized = normalizeExtractedData(json.data);
+        // Basic quality check: if most ingredients are missing amounts, the extraction is likely poor
+        const hasAmounts = (normalized.ingredients ?? []).filter(i => i.amount && i.amount.trim()).length;
+        const total = (normalized.ingredients ?? []).length || 1;
+        if (hasAmounts / total < 0.4 && total >= 4) {
+          setExtractionError(
+            <span>⚠️ This extraction looks incomplete — many ingredients are missing amounts. <button type="button" onClick={() => setActiveTab('upload')} className="underline text-caramel hover:text-espresso font-medium">Try uploading a photo instead</button> — it usually works better for recipes from major cooking sites.</span>
+          );
+          setExtracting(false);
+          return;
+        }
         applyExtractedData(normalized);
         setFormData(normalized);
         setSourceUrl(json.sourceUrl ?? null);

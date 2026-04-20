@@ -185,6 +185,7 @@ export async function POST(request: Request) {
 
     // Use cheerio to extract structured data (JSON-LD first, DOM fallback)
     const parsed = parseRecipeHtml(html);
+    console.log('[extract] cheerio parsed:', JSON.stringify({ name: parsed.name, ingredientsCount: parsed.ingredients.length, instructionsCount: parsed.instructions.length, firstIngredient: parsed.ingredients[0] }));
 
     let data: Record<string, unknown>;
 
