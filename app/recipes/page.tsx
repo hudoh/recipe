@@ -1,16 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import RecipeCard from '@/components/RecipeCard';
 import type { Recipe } from '@/types/recipe';
 import { useAuth } from '@/components/AuthContext';
 
-type Tab = 'mine' | 'community';
-
-export default function Home() {
-  const { user, loading: authLoading, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('community');
+export default function MyRecipesPage() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [filtered, setFiltered] = useState<Recipe[]>([]);
   const [search, setSearch] = useState('');
@@ -19,6 +18,12 @@ export default function Home() {
   const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
   const fetchRecipes = useCallback(async () => {
     try {
@@ -35,19 +40,10 @@ export default function Home() {
     }
   }, []);
 
-  useEffect(() => { fetchRecipes(); }, [fetchRecipes]);
+  useEffect(() => { if (user) fetchRecipes(); }, [fetchRecipes, user]);
 
   useEffect(() => {
     let result = [...recipes];
-
-    // Tab filtering: community = public only; mine = all accessible (RLS already filtered)
-    if (activeTab === 'community') {
-      result = result.filter(r => r.visibility === 'public');
-    } else {
-      // "My Recipes" — RLS has already filtered, but additionally show owned/shared
-      // (recipes with no visibility set are treated as private for unknown users)
-    }
-
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(r =>
@@ -57,37 +53,26 @@ export default function Home() {
       );
     }
     if (selectedTags.length > 0) {
-      result = result.filter(r =>
-        selectedTags.every(tag => r.tags?.includes(tag))
-      );
+      result = result.filter(r => selectedTags.every(tag => r.tags?.includes(tag)));
     }
     if (ratingFilter !== null) {
       result = result.filter(r => (r.rating ?? 0) >= ratingFilter);
     }
     if (categoryFilter.trim()) {
       const q = categoryFilter.toLowerCase();
-      result = result.filter(r =>
-        r.category?.toLowerCase().includes(q)
-      );
+      result = result.filter(r => r.category?.toLowerCase().includes(q));
     }
     if (showFavoritesOnly) {
       result = result.filter(r => r.is_favorite);
     }
     setFiltered(result);
-  }, [recipes, search, selectedTags, ratingFilter, categoryFilter, showFavoritesOnly, activeTab]);
+  }, [recipes, search, selectedTags, ratingFilter, categoryFilter, showFavoritesOnly]);
 
-  const allCategories = Array.from(
-    new Set(recipes.flatMap(r => r.category?.trim() ? [r.category] : []))
-  ).sort();
-
-  const allTags = Array.from(
-    new Set(recipes.flatMap(r => r.tags ?? []))
-  ).sort();
+  const allCategories = Array.from(new Set(recipes.flatMap(r => r.category?.trim() ? [r.category] : []))).sort();
+  const allTags = Array.from(new Set(recipes.flatMap(r => r.tags ?? []))).sort();
 
   const toggleTag = (tag: string) =>
-    setSelectedTags(prev =>
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
-    );
+    setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
 
   const handleDelete = async (id: string) => {
     await fetch(`/api/recipes/${id}`, { method: 'DELETE' });
@@ -103,78 +88,30 @@ export default function Home() {
     fetchRecipes();
   };
 
+  if (authLoading || !user) return null;
+
   return (
     <div className="min-h-screen">
-      {/* Header */}
-      <header className="bg-espresso text-cream">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <Link href="/" className="text-2xl font-bold">🍳 Recipe Manager</Link>
-          </div>
-          {/* Auth buttons / user menu */}
-          <div className="flex items-center gap-3">
-            {!authLoading && (
-              user ? (
-                <>
-                  <Link href="/recipe/new" className="btn-caramel text-sm">+ New Recipe</Link>
-                  <div className="relative group">
-                    <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors">
-                      <div className="w-8 h-8 rounded-full bg-caramel flex items-center justify-center text-sm font-bold text-espresso">
-                        {user.user_metadata?.display_name?.[0]?.toUpperCase() || user.email?.[0].toUpperCase() || '?'}
-                      </div>
-                      <span className="text-cream/80 text-sm hidden sm:block">{user.user_metadata?.display_name || user.email}</span>
-                    </button>
-                    <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-lg border border-espresso/10 overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                      <Link href="/recipes" className="block px-4 py-3 text-sm text-espresso hover:bg-cream transition-colors">📖 My Recipes</Link>
-                      <button
-                        onClick={() => signOut()}
-                        className="w-full text-left px-4 py-3 text-sm text-espresso hover:bg-cream transition-colors border-t border-espresso/5"
-                      >
-                        Sign Out
-                      </button>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <Link href="/login" className="px-4 py-2 text-cream/80 hover:text-cream text-sm font-medium transition-colors">Sign In</Link>
-                  <Link href="/signup" className="btn-caramel text-sm">Get Started</Link>
-                </>
-              )
-            )}
-          </div>
-        </div>
-        {/* Tabs */}
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="flex gap-1">
-            <button
-              onClick={() => setActiveTab('community')}
-              className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
-                activeTab === 'community' ? 'bg-white/10 text-cream' : 'text-cream/60 hover:text-cream'
-              }`}
-            >
-              🌍 Community
-            </button>
-            <button
-              onClick={() => setActiveTab('mine')}
-              className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
-                activeTab === 'mine' ? 'bg-white/10 text-cream' : 'text-cream/60 hover:text-cream'
-              }`}
-            >
-              📖 My Recipes
-            </button>
+      <header className="bg-espresso text-cream py-8 px-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-between">
+            <div>
+              <Link href="/" className="text-cream/60 hover:text-cream text-sm mb-2 block">← Back</Link>
+              <h1 className="text-3xl font-bold">📖 My Recipes</h1>
+              <p className="text-cream/70 mt-1">Your private collection</p>
+            </div>
+            <Link href="/recipe/new" className="btn-caramel">+ New Recipe</Link>
           </div>
         </div>
       </header>
 
       <main className="max-w-5xl mx-auto px-6 py-8">
-        {/* Toolbar */}
+        {/* Search + filters */}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between mb-6">
-          {/* Search */}
           <div className="relative w-full sm:w-64">
             <input
               type="text"
-              placeholder="Search recipes..."
+              placeholder="Search my recipes..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-espresso/20 bg-white text-espresso focus:outline-none focus:ring-2 focus:ring-caramel"
@@ -184,7 +121,6 @@ export default function Home() {
             </svg>
           </div>
 
-          {/* Rating filter */}
           <select
             value={ratingFilter ?? ''}
             onChange={e => setRatingFilter(e.target.value ? Number(e.target.value) : null)}
@@ -196,7 +132,6 @@ export default function Home() {
             <option value="3">★★★+</option>
           </select>
 
-          {/* Category filter */}
           {allCategories.length > 0 ? (
             <select
               value={categoryFilter}
@@ -204,9 +139,7 @@ export default function Home() {
               className="px-3 py-2.5 rounded-xl border border-espresso/20 bg-white text-espresso text-sm focus:outline-none focus:ring-2 focus:ring-caramel"
             >
               <option value="">All Categories</option>
-              {allCategories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
+              {allCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
             </select>
           ) : (
             <input
@@ -219,13 +152,10 @@ export default function Home() {
           )}
 
           <div className="flex gap-2 flex-shrink-0">
-            {/* Favorites toggle */}
             <button
               onClick={() => setShowFavoritesOnly(prev => !prev)}
               className={`flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${
-                showFavoritesOnly
-                  ? 'bg-caramel border-caramel text-espresso'
-                  : 'border-espresso/20 text-espresso hover:border-caramel bg-white'
+                showFavoritesOnly ? 'bg-caramel border-caramel text-espresso' : 'border-espresso/20 text-espresso hover:border-caramel bg-white'
               }`}
             >
               <span className="text-base">{showFavoritesOnly ? '❤️' : '♡'}</span>
