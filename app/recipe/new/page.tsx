@@ -337,8 +337,7 @@ export default function NewRecipePage() {
           <div className="bg-white rounded-xl border border-espresso/10 p-6 space-y-4">
             <h2 className="text-lg font-bold text-espresso border-b border-espresso/10 pb-2">Upload a Recipe File</h2>
             <p className="text-sm text-espresso/60">
-              Upload an image (JPG, PNG, WebP, GIF), PDF, or Word document containing a recipe.
-              We'll extract the recipe data using AI.
+              Upload an image (JPG, PNG, WebP, GIF), PDF, or Word document. Works reliably for all recipe sites — including AllRecipes, Epicurious, and Bon Appétit which block URL scraping.
             </p>
             {/* File drop zone — opens photo library picker (no capture=environment) */}
             <div
@@ -428,7 +427,7 @@ export default function NewRecipePage() {
             <h2 className="text-lg font-bold text-espresso border-b border-espresso/10 pb-2">Extract from URL</h2>
             <p className="text-sm text-espresso/60">
               Paste a URL to a recipe page and we'll extract the recipe data using AI.
-              Works best with dedicated recipe sites.
+              Works best with simple recipe blogs. Major sites like AllRecipes, Epicurious, and Bon Appétit often block automated scraping — if it fails, <button type="button" onClick={() => setActiveTab('upload')} className="underline text-caramel hover:text-espresso font-medium">try the Upload tab instead</button> and photograph the recipe from your phone.
             </p>
             <div className="flex gap-3">
               <input
